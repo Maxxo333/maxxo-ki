@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src https://api.anthropic.com https://api.tavily.com; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta name="color-scheme" content="light dark">
+  <meta name="referrer" content="no-referrer">
+  <meta name="description" content="Maxxo KI Mobil – persönlicher KI-Assistent mit Claude Haiku 5.5 und Websuche, läuft komplett im Browser.">
+  <meta name="theme-color" content="#f7f7f8" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#111318" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Maxxo KI">
+  <title>Maxxo KI</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Seitenleiste mit Verlauf -->
+    <aside id="sidebar" class="sidebar" aria-label="Unterhaltungen">
+      <div class="sidebar-head">
+        <div class="brand">
+          <img src="favicon.svg" alt="" class="brand-logo" width="28" height="28">
+          <span class="brand-name">Maxxo KI</span>
+        </div>
+        <button id="close-sidebar" class="icon-btn only-mobile" type="button" aria-label="Seitenleiste schließen">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+
+      <button id="new-chat" class="btn btn-primary btn-block" type="button">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        Neue Unterhaltung
+      </button>
+
+      <nav class="conv-nav" aria-labelledby="history-label">
+        <h2 id="history-label" class="sidebar-label">Verlauf</h2>
+        <ul id="conv-list" class="conv-list"></ul>
+        <p id="conv-empty" class="muted small conv-empty">Noch keine Unterhaltungen.</p>
+      </nav>
+
+      <div class="sidebar-foot">
+        <p class="small muted">Unterhaltungen werden nur in diesem Browser auf diesem Gerät gespeichert.</p>
+        <button id="clear-history" class="btn btn-ghost btn-block danger-text" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>
+          Verlauf löschen
+        </button>
+      </div>
+    </aside>
+    <div id="backdrop" class="backdrop" hidden></div>
+
+    <!-- Hauptbereich -->
+    <main class="main">
+      <header class="topbar">
+        <button id="open-sidebar" class="icon-btn only-mobile" type="button" aria-label="Verlauf öffnen" aria-controls="sidebar" aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        </button>
+        <h1 id="conv-title" class="topbar-title">Maxxo KI</h1>
+        <span id="status-pill" class="status-pill" title="Status">…</span>
+        <button id="open-settings" class="icon-btn" type="button" aria-label="Einstellungen öffnen">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+        </button>
+      </header>
+
+      <div id="banner" class="banner" role="status" hidden>
+        <span id="banner-text"></span>
+        <button id="banner-retry" class="btn btn-small" type="button" hidden>Erneut verbinden</button>
+      </div>
+
+      <section id="messages" class="messages" aria-label="Nachrichtenverlauf">
+        <div id="messages-inner" class="messages-inner"></div>
+      </section>
+
+      <footer class="composer-wrap">
+        <form id="composer" class="composer" autocomplete="off">
+          <div class="composer-meta">
+            <button id="search-chip" class="chip" type="button" aria-label="Web-Recherche-Einstellungen öffnen">Web-Recherche: Automatisch</button>
+            <span id="char-counter" class="char-counter" hidden></span>
+          </div>
+          <div class="composer-row">
+            <label for="input" class="sr-only">Deine Frage</label>
+            <textarea id="input" class="input" rows="1" maxlength="8000" placeholder="Frag Maxxo KI etwas …" enterkeyhint="send"></textarea>
+            <button id="send" class="send-btn" type="submit" aria-label="Senden">
+              <svg class="icon-send" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+              <svg class="icon-stop" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1.5"/></svg>
+              <span class="send-label">Senden</span>
+            </button>
+          </div>
+        </form>
+        <p class="disclaimer">Maxxo KI kann Fehler machen. Prüfe wichtige Informationen anhand der Quellen.</p>
+      </footer>
+    </main>
+  </div>
+
+  <!-- Einstellungen -->
+  <dialog id="settings-dialog" class="dialog" aria-labelledby="settings-title">
+    <form method="dialog" class="dialog-inner">
+      <div class="dialog-head">
+        <h2 id="settings-title">Einstellungen</h2>
+        <button class="icon-btn" value="close" aria-label="Einstellungen schließen">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+
+      <div class="dialog-body">
+        <fieldset class="setting-group keys-group">
+          <legend>Schlüssel</legend>
+          <label class="field">
+            <span>Claude-API-Schlüssel (sk-ant-…)</span>
+            <input id="key-anthropic" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off" inputmode="text" placeholder="sk-ant-…">
+          </label>
+          <p class="key-state" id="key-anthropic-state" data-state="missing">nicht gespeichert</p>
+          <label class="field">
+            <span>Tavily-Schlüssel (tvly-…, optional für Websuche)</span>
+            <input id="key-tavily" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off" inputmode="text" placeholder="tvly-…">
+          </label>
+          <p class="key-state" id="key-tavily-state" data-state="missing">nicht gespeichert</p>
+          <p id="keys-error" class="note warn" role="alert" hidden></p>
+          <div class="keys-actions">
+            <button id="keys-save" class="btn btn-primary" type="button">Speichern</button>
+            <button id="keys-clear" class="btn danger" type="button">Schlüssel löschen</button>
+          </div>
+          <p class="note">
+            Schlüssel werden nur in diesem Browser auf diesem Gerät gespeichert und nur direkt an Anthropic bzw. Tavily
+            gesendet – nicht an GitHub oder andere. Wer dein entsperrtes Gerät benutzt, könnte sie auslesen.
+          </p>
+          <p class="note">
+            Empfehlung: In der Anthropic Console ein Ausgabenlimit setzen und einen eigenen Schlüssel nur für dieses Gerät
+            anlegen, den du jederzeit löschen kannst. Leere Felder lassen gespeicherte Schlüssel unverändert.
+          </p>
+        </fieldset>
+
+        <fieldset class="setting-group">
+          <legend>Modell &amp; Anbieter</legend>
+          <dl class="info-list">
+            <dt>Sprachmodell-Anbieter</dt><dd id="info-llm-provider">–</dd>
+            <dt>Modell</dt><dd id="info-llm-model">–</dd>
+            <dt>Suchanbieter</dt><dd id="info-search-provider">–</dd>
+          </dl>
+          <p id="llm-not-configured" class="note warn" hidden>Noch kein Claude-Schlüssel eingetragen – oben unter „Schlüssel“.</p>
+          <details class="whence">
+            <summary>Was kommt woher?</summary>
+            <ul>
+              <li><strong>Vom Sprachmodell (Claude Haiku 5.5):</strong> Verstehen der Frage, Formulieren der Antwort, Erklären, Programmieren, Zusammenfassen. Das Modell kann Fehler machen, und sein Wissen hat einen Stichtag.</li>
+              <li><strong>Von der Websuche (Tavily):</strong> aktuelle Treffer mit Titel, Link und kurzem Ausschnitt – nur wenn ein Tavily-Schlüssel eingetragen ist.</li>
+              <li><strong>Von der App:</strong> Quellenanzeige und lokaler Verlauf im Browser. Die Mobil-Version liest nur Suchausschnitte, keine vollständigen Webseiten.</li>
+              <li><strong>Nur in der Mac-Version:</strong> Web-Recherche über Tor, .onion-Quellen und das Lesen von Quellseiten.</li>
+              <li><strong>Nicht enthalten:</strong> Bilder erzeugen, Dateien hochladen, Sprachein- und -ausgabe, Erinnerung über Unterhaltungen hinweg.</li>
+              <li><strong>Kosten:</strong> Anfragen an Claude kosten Guthaben in deiner Anthropic Console; Tavily ist im kostenlosen Kontingent begrenzt.</li>
+            </ul>
+          </details>
+        </fieldset>
+
+        <fieldset class="setting-group">
+          <legend>Web-Recherche</legend>
+          <div class="radio-row">
+            <label class="radio"><input type="radio" name="webSearch" value="auto"> <span><strong>Automatisch</strong><small>Maxxo KI entscheidet, ob eine Suche nötig ist</small></span></label>
+            <label class="radio"><input type="radio" name="webSearch" value="always"> <span><strong>Immer</strong><small>Vor jeder Antwort im Web suchen</small></span></label>
+            <label class="radio"><input type="radio" name="webSearch" value="off"> <span><strong>Aus</strong><small>Nur mit dem Wissen des Modells antworten</small></span></label>
+          </div>
+          <p id="search-not-configured" class="note warn" hidden>Kein Tavily-Schlüssel eingetragen – ohne ihn antwortet Maxxo KI nur aus eigenem Wissen.</p>
+        </fieldset>
+
+        <fieldset class="setting-group">
+          <legend>Datenschutz</legend>
+          <p class="note">
+            Es gibt keinen eigenen Server: Deine Unterhaltungen und Schlüssel bleiben in diesem Browser (localStorage).
+            Für jede Frage wird der Verlauf der aktuellen Unterhaltung direkt an Anthropic (Claude) gesendet;
+            an Tavily geht nur die Suchanfrage.
+          </p>
+          <p class="note"><a href="datenschutz.html" target="_blank" rel="noopener noreferrer">Datenschutzhinweise lesen</a></p>
+          <div class="keys-actions">
+            <button id="settings-clear" class="btn danger" type="button">Gesamten Verlauf löschen</button>
+            <button id="clear-everything" class="btn danger" type="button">Alles löschen (Verlauf + Schlüssel)</button>
+          </div>
+        </fieldset>
+
+        <p id="server-info" class="note small"></p>
+      </div>
+
+      <div class="dialog-foot">
+        <button class="btn btn-primary" value="close">Fertig</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Bestätigungsdialog -->
+  <dialog id="confirm-dialog" class="dialog dialog-small" aria-labelledby="confirm-title">
+    <form method="dialog" class="dialog-inner">
+      <div class="dialog-body">
+        <h2 id="confirm-title">Sicher?</h2>
+        <p id="confirm-text"></p>
+      </div>
+      <div class="dialog-foot">
+        <button class="btn" value="cancel">Abbrechen</button>
+        <button id="confirm-ok" class="btn danger" value="ok">Löschen</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+  <div id="announcer" class="sr-only" aria-live="polite"></div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
